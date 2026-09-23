@@ -1,0 +1,1149 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#E9EDF0" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0F1519" media="(prefers-color-scheme: dark)">
+<title>Финансы — трекер v30</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#E9EDF0; --surface:#FFFFFF; --soft:#F3F5F7; --ink:#132029; --muted:#5A6A77; --line:#D3DAE0;
+  --accent:#0A6C66; --accent-ink:#FFFFFF; --accent-soft:#DCEFEC;
+  --pos:#12784A; --neg:#B42A20; --warn:#9A6212; --gold:#A0701A;
+  --r-lg:14px; --r-sm:7px;
+  font-family:'Onest',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  color:var(--ink); background:var(--bg);
+  font-feature-settings:"tnum" 1;
+}
+@media (prefers-color-scheme:dark){
+  :root{ --bg:#0F1519; --surface:#172128; --soft:#1C2830; --ink:#E4EAEE; --muted:#8FA0AD; --line:#26333C;
+    --accent:#3FB3A8; --accent-ink:#062220; --accent-soft:#16312F; --pos:#46C98C; --neg:#F07A6E; --warn:#E0A84A; --gold:#D8A443; }
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{background:var(--bg);min-height:100vh;
+  padding:calc(env(safe-area-inset-top,0px) + 18px) max(16px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 40px) max(16px,env(safe-area-inset-left,0px));
+  font-size:15px;line-height:1.45}
+.wrap{max-width:1180px;margin:0 auto}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* Шапка */
+.top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px}
+.brand{font-weight:700;font-size:17px;letter-spacing:-.01em}
+.sync{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);background:none;border:0;cursor:pointer;padding:4px 0}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--muted);flex:none}
+.dot.ok{background:var(--pos)} .dot.busy{background:var(--warn);animation:blink 1s infinite} .dot.err{background:var(--neg)}
+@keyframes blink{50%{opacity:.3}}
+@media (prefers-reduced-motion:reduce){.dot.busy{animation:none}}
+
+/* Главная цифра */
+.hero{display:grid;grid-template-columns:minmax(0,auto) minmax(0,1fr);gap:8px 28px;align-items:end;padding:6px 0 22px;border-bottom:1px solid var(--line);margin-bottom:16px}
+.hero-label{font-size:14px;color:var(--muted);grid-column:1/-1}
+.hero-num{font-size:clamp(40px,8vw,76px);font-weight:800;letter-spacing:-.035em;line-height:.95}
+.hero-spark{height:78px;position:relative;min-width:0}
+.hero-meta{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px 22px;font-size:14px;color:var(--muted)}
+.hero-meta b{font-weight:600}
+.stamp{display:inline-flex;align-items:center;gap:8px}
+.stamp .clock{font-weight:700;color:var(--ink);border:1.5px solid var(--ink);border-radius:5px;padding:0 6px;font-size:13px;letter-spacing:.02em}
+.stamp.late .clock{border-color:var(--warn);color:var(--warn)}
+@media (max-width:640px){.hero{grid-template-columns:1fr}.hero-spark{height:60px}}
+
+/* Вкладки */
+.tabs{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;margin:0 0 20px;padding-bottom:2px;position:sticky;top:0;z-index:5;background:var(--bg);padding-top:calc(env(safe-area-inset-top,0px) + 4px)}
+.tabs::-webkit-scrollbar{display:none}
+.tab{flex:none;border:0;background:none;padding:9px 14px;border-radius:999px;color:var(--muted);font-weight:500;cursor:pointer;white-space:nowrap}
+.tab[aria-selected=true]{background:var(--ink);color:var(--bg);font-weight:600}
+.view{display:none}.view.on{display:block}
+
+/* Блоки */
+h2{font-size:19px;font-weight:700;letter-spacing:-.015em;margin:26px 0 10px}
+h2:first-child{margin-top:0}
+h3{font-size:15px;font-weight:600;margin:0 0 10px}
+.panel{min-width:0;background:var(--surface);border-radius:var(--r-lg);padding:16px;margin-bottom:16px;border:1px solid var(--line)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden;margin-bottom:16px}
+.kpi{background:var(--surface);padding:14px 16px}
+.kpi .k{font-size:13px;color:var(--muted)}
+.kpi .v{font-size:23px;font-weight:700;letter-spacing:-.02em;margin-top:2px}
+.kpi .s{font-size:13px;color:var(--muted);margin-top:2px}
+.cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px}
+.cols>*{min-width:0}
+@media (max-width:900px){.cols{grid-template-columns:minmax(0,1fr)}}
+.chart{position:relative;height:300px}
+.chart.sm{height:230px}
+.note{font-size:13px;color:var(--muted);margin-top:8px}
+.warnbox{border-left:3px solid var(--warn);background:var(--soft);padding:10px 12px;border-radius:0 var(--r-sm) var(--r-sm) 0;font-size:14px;margin-bottom:14px}
+.pos{color:var(--pos)} .neg{color:var(--neg)} .mut{color:var(--muted)}
+
+/* Таблицы */
+.tscroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{font-weight:500;color:var(--muted);text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
+tr:last-child td{border-bottom:0}
+.n{text-align:right;white-space:nowrap}
+tfoot td{font-weight:700;border-top:2px solid var(--ink);border-bottom:0}
+.tag{display:inline-block;font-size:12px;font-weight:600;padding:1px 7px;border-radius:5px;background:var(--soft);color:var(--muted);white-space:nowrap}
+.tag.cur{background:none;border:1px solid var(--line);color:var(--ink)}
+.tag.c-BTC,.tag.c-ETH,.tag.c-LTC,.tag.c-GRAM{border-color:var(--gold);color:var(--gold)}
+.tag.fixed{background:var(--accent-soft);color:var(--accent)}
+.tag.manual{background:none;border:1px dashed var(--warn);color:var(--warn)}
+.bar{height:6px;border-radius:3px;background:var(--accent);min-width:2px}
+
+/* Формы */
+.form{display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));align-items:end}
+label.f{display:grid;gap:4px;font-size:13px;color:var(--muted)}
+input,select,textarea{background:var(--soft);border:1px solid var(--line);border-radius:var(--r-sm);padding:9px 10px;width:100%;min-width:0}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);outline:none}
+input.q{width:118px;text-align:right;padding:5px 8px;background:transparent}
+input.q:hover{background:var(--soft)}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:var(--r-sm);padding:9px 14px;cursor:pointer;font-weight:600;white-space:nowrap}
+.btn:hover{border-color:var(--ink)}
+.btn.pri{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.pri:hover{filter:brightness(1.08)}
+.btn.bad{color:var(--neg)}
+.btn.sm{padding:4px 9px;font-size:13px}
+.btn:disabled{opacity:.5;cursor:default}
+.form .btn{white-space:normal}
+.icon{border:0;background:none;cursor:pointer;color:var(--muted);padding:4px 6px;border-radius:6px;font-size:15px}
+.icon:hover{color:var(--ink);background:var(--soft)}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.row.sp{justify-content:space-between}
+.chk{display:flex;gap:8px;align-items:center;font-size:14px}
+.chk input{width:auto}
+
+/* Уведомления и диалоги */
+.toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 18px);transform:translate(-50%,20px);opacity:0;background:var(--ink);color:var(--bg);padding:11px 16px;border-radius:10px;font-size:14px;max-width:min(92vw,440px);z-index:50;transition:opacity .2s,transform .2s;pointer-events:none}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+.toast.err{background:var(--neg);color:#fff}
+dialog{border:1px solid var(--line);border-radius:var(--r-lg);background:var(--surface);color:var(--ink);padding:20px;max-width:min(94vw,560px);width:100%;margin:auto}
+dialog::backdrop{background:rgba(10,16,20,.55)}
+.connect{max-width:520px;margin:8vh auto}
+.connect p{color:var(--muted);margin:8px 0 16px}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="top">
+    <div class="brand">Финансы</div>
+    <button class="sync" id="syncBtn" title="Обновить данные с сервера"><span class="dot" id="syncDot"></span><span id="syncText">Нет подключения</span></button>
+  </div>
+
+  <!-- Экран подключения -->
+  <section id="connect" class="panel connect hidden">
+    <h2>Подключение к базе</h2>
+    <p>Вставьте адрес веб-приложения Apps Script и PIN из журнала функции <b>setup</b>. На каждом устройстве это делается один раз.</p>
+    <div class="form" style="grid-template-columns:1fr">
+      <label class="f">Адрес веб-приложения<input id="cUrl" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off"></label>
+      <label class="f">PIN<input id="cPin" type="password" autocomplete="current-password"></label>
+      <button class="btn pri" id="cGo">Подключиться</button>
+    </div>
+  </section>
+
+  <div id="app" class="hidden">
+    <header class="hero">
+      <div class="hero-label">Чистые активы сейчас</div>
+      <div class="hero-num" id="heroNav">—</div>
+      <div class="hero-spark"><canvas id="spark" aria-label="Динамика чистых активов"></canvas></div>
+      <div class="hero-meta">
+        <span id="heroD30"></span><span id="heroMtd"></span>
+        <span class="stamp" id="stamp"><span class="clock">23:59</span><span id="stampText"></span></span>
+      </div>
+    </header>
+
+    <nav class="tabs" role="tablist" id="tabs">
+      <button class="tab" role="tab" data-tab="overview">Обзор</button>
+      <button class="tab" role="tab" data-tab="expenses">Расходы</button>
+      <button class="tab" role="tab" data-tab="portfolio">Портфель</button>
+      <button class="tab" role="tab" data-tab="compare">Сравнение</button>
+      <button class="tab" role="tab" data-tab="forecast">Прогноз</button>
+      <button class="tab" role="tab" data-tab="rates">Курсы</button>
+      <button class="tab" role="tab" data-tab="debts">Долги</button>
+      <button class="tab" role="tab" data-tab="settings">Настройки</button>
+    </nav>
+
+    <!-- ОБЗОР -->
+    <section class="view" id="v-overview">
+      <div class="kpis" id="ovKpis"></div>
+      <div class="panel">
+        <div class="row sp"><h3>Чистые активы по дням</h3>
+          <select id="ovRange" style="width:auto"><option value="90">3 месяца</option><option value="180">6 месяцев</option><option value="365">Год</option><option value="0" selected>Всё время</option></select></div>
+        <div class="chart"><canvas id="ovNav"></canvas></div>
+      </div>
+      <div class="cols">
+        <div class="panel"><h3>Курсы сейчас</h3><div class="tscroll"><table id="ovLive"></table></div>
+          <div class="note">Изменение — к последнему закрытию 23:59 по Дубаю.</div></div>
+        <div class="panel"><div class="row sp"><h3>Последние расходы</h3><button class="btn sm pri" id="ovAddExp">Добавить расход</button></div>
+          <div class="tscroll"><table id="ovExp"></table></div></div>
+      </div>
+    </section>
+
+    <!-- РАСХОДЫ -->
+    <section class="view" id="v-expenses">
+      <div class="panel" id="expFormPanel">
+        <h3 id="expFormTitle">Новый расход</h3>
+        <div class="form">
+          <label class="f">Дата<input type="date" id="eDate"></label>
+          <label class="f">Сумма<input type="number" id="eAmount" step="any" inputmode="decimal" placeholder="0"></label>
+          <label class="f">Валюта<select id="eCur"></select></label>
+          <label class="f">Категория<select id="eCat"></select></label>
+          <label class="f" style="grid-column:1/-1">Комментарий<input id="eNote" maxlength="300" placeholder="Необязательно"></label>
+          <div class="row"><button class="btn pri" id="eSave">Добавить</button><button class="btn hidden" id="eCancel">Отмена</button></div>
+        </div>
+        <div class="note" id="eHint"></div>
+      </div>
+
+      <div class="row sp" style="margin-bottom:12px">
+        <div class="row"><input type="month" id="expMonth" style="width:auto"><select id="expDisp" style="width:auto"></select></div>
+        <div class="row"><button class="btn sm" id="expPrev">← Месяц</button><button class="btn sm" id="expNext">Месяц →</button></div>
+      </div>
+      <div class="kpis" id="expKpis"></div>
+      <div class="cols">
+        <div class="panel"><h3>По категориям</h3><div class="tscroll"><table id="expCats"></table></div></div>
+        <div class="panel"><h3>Доли категорий</h3><div class="chart sm"><canvas id="expPie"></canvas></div></div>
+      </div>
+      <div class="panel"><h3>Расходы по месяцам</h3><div class="chart"><canvas id="expMonths"></canvas></div></div>
+      <div class="panel"><h3 id="expListTitle">Записи</h3><div class="tscroll"><table id="expList"></table></div></div>
+    </section>
+
+    <!-- ПОРТФЕЛЬ -->
+    <section class="view" id="v-portfolio">
+      <div class="panel">
+        <div class="row sp">
+          <label class="f" style="min-width:230px">Дата<select id="pDate"></select></label>
+          <div class="row" id="pSnapActions"></div>
+        </div>
+        <div class="note" id="pInfo"></div>
+      </div>
+      <div class="kpis" id="pKpis"></div>
+      <div class="cols">
+        <div class="panel"><h3>Активы</h3><div class="tscroll"><table id="pAssets"></table></div></div>
+        <div class="panel"><h3>Долги</h3><div class="tscroll"><table id="pDebts"></table></div></div>
+      </div>
+      <div class="panel">
+        <h3>Добавить позицию</h3>
+        <div class="form">
+          <label class="f" style="grid-column:span 2">Название<input id="hName"></label>
+          <label class="f">Валюта<select id="hCur"></select></label>
+          <label class="f">Количество<input type="number" id="hQty" step="any" inputmode="decimal"></label>
+          <label class="f">Тип<select id="hType"><option value="asset">Актив</option><option value="debt">Долг</option></select></label>
+          <button class="btn pri" id="hAdd">Добавить</button>
+        </div>
+        <label class="chk" style="margin-top:10px"><input type="checkbox" id="hInt"> Долг с простыми процентами (сумма растёт каждый месяц)</label>
+        <div class="form hidden" id="hIntBox" style="margin-top:8px">
+          <label class="f">Дата начала<input type="date" id="hIntStart"></label>
+          <label class="f">Сумма на начало<input type="number" id="hIntP" step="any"></label>
+          <label class="f">Ставка, % годовых<input type="number" id="hIntR" step="any"></label>
+        </div>
+      </div>
+      <div class="cols">
+        <div class="panel"><h3>Состав активов</h3><div class="chart sm"><canvas id="pPieA"></canvas></div></div>
+        <div class="panel"><h3>Состав долгов</h3><div class="chart sm"><canvas id="pPieD"></canvas></div></div>
+      </div>
+    </section>
+
+    <!-- СРАВНЕНИЕ -->
+    <section class="view" id="v-compare">
+      <div class="panel row">
+        <label class="f">С даты<select id="cFrom"></select></label>
+        <label class="f">По дату<select id="cTo"></select></label>
+      </div>
+      <div class="kpis" id="cKpis"></div>
+      <div class="panel"><h3>Активы по валютам</h3>
+        <div class="tscroll"><table id="cTable"></table></div>
+        <div class="note">Изменение = влияние курса + влияние количества. Влияние курса считается на начальное количество.</div></div>
+      <div class="panel"><h3>Стоимость по валютам, начало = 100</h3><div class="chart"><canvas id="cChart"></canvas></div></div>
+    </section>
+
+    <!-- ПРОГНОЗ -->
+    <section class="view" id="v-forecast">
+      <div class="panel row">
+        <label class="f">Горизонт<select id="fH"><option value="30">30 дней</option><option value="90" selected>90 дней</option><option value="180">180 дней</option><option value="365">Год</option></select></label>
+        <label class="f">По данным за<select id="fBase"><option value="90">3 месяца</option><option value="180">6 месяцев</option><option value="0" selected>всё время</option></select></label>
+      </div>
+      <div class="warnbox">Прогноз — продолжение линейного тренда прошлых данных. Это ориентир, а не финансовый совет.</div>
+      <div class="kpis" id="fKpis"></div>
+      <div class="panel"><h3>Чистые активы: факт и тренд</h3><div class="chart"><canvas id="fChart"></canvas></div>
+        <div class="note">Коридор показывает типичный разброс фактических значений вокруг тренда (±2 стандартных отклонения).</div></div>
+      <div class="panel"><h3>Прогноз расходов</h3><div class="tscroll"><table id="fExp"></table></div>
+        <div class="note" id="fExpNote"></div></div>
+    </section>
+
+    <!-- КУРСЫ -->
+    <section class="view" id="v-rates">
+      <div class="panel">
+        <h3>Фиксация курсов</h3>
+        <p class="note" style="margin:0 0 12px">Сервер каждый час проверяет прошедшие дни и записывает курсы на 23:59 по Дубаю: криптовалюты и EUR — закрытие минутной свечи Binance, USD/RUB — курс ЦБ РФ на эту дату. Курс рубля можно поправить вручную: ручное значение важнее курса ЦБ.</p>
+        <div class="form">
+          <label class="f">Заполнить с даты<input type="date" id="rFrom"></label>
+          <label class="f">по дату<input type="date" id="rTo"></label>
+          <button class="btn pri" id="rFill">Заполнить пропуски</button>
+        </div>
+        <label class="chk" style="margin-top:10px"><input type="checkbox" id="rForce"> Перезаписать уже зафиксированные даты (ручной курс рубля сохранится)</label>
+        <div class="note" id="rProgress"></div>
+      </div>
+      <div class="panel"><div class="tscroll"><table id="rTable"></table></div>
+        <div class="row" style="margin-top:10px"><button class="btn sm" id="rMore">Показать все даты</button></div></div>
+      <div class="cols">
+        <div class="panel"><h3>BTC и ETH</h3><div class="chart sm"><canvas id="rC1"></canvas></div></div>
+        <div class="panel"><h3>LTC и GRAM</h3><div class="chart sm"><canvas id="rC2"></canvas></div></div>
+      </div>
+      <div class="panel"><h3>USD/RUB</h3><div class="chart sm"><canvas id="rC3"></canvas></div></div>
+    </section>
+
+    <!-- ДОЛГИ -->
+    <section class="view" id="v-debts">
+      <div id="dList"></div>
+    </section>
+
+    <!-- НАСТРОЙКИ -->
+    <section class="view" id="v-settings">
+      <div class="panel">
+        <h3>Подключение</h3>
+        <div class="form">
+          <label class="f" style="grid-column:1/-1">Адрес веб-приложения<input id="sUrl" autocomplete="off"></label>
+          <label class="f">PIN<input id="sPin" type="password"></label>
+          <button class="btn pri" id="sConn">Сохранить</button>
+        </div>
+        <div class="note">Адрес и PIN хранятся только на этом устройстве, в файле их нет.</div>
+      </div>
+      <div class="panel">
+        <h3>Расходы</h3>
+        <div class="form">
+          <label class="f">Валюта по умолчанию<select id="sDefCur"></select></label>
+          <label class="f">Бюджет на месяц<input type="number" id="sBudget" step="any" placeholder="Без бюджета"></label>
+          <label class="f">Валюта бюджета<select id="sBudgetCur"></select></label>
+        </div>
+        <label class="f" style="margin-top:10px">Категории, по одной в строке<textarea id="sCats" rows="8"></textarea></label>
+        <div class="row" style="margin-top:10px"><button class="btn pri" id="sSaveExp">Сохранить</button></div>
+      </div>
+      <div class="panel">
+        <h3>Курсы</h3>
+        <div class="form">
+          <label class="f">AED за 1 USD для новых дат<input type="number" id="sAed" step="any"></label>
+          <button class="btn pri" id="sSaveAed">Сохранить</button>
+        </div>
+        <div class="note">Дирхам привязан к доллару: 3,6725. Меняйте, только если считаете по другому курсу.</div>
+      </div>
+      <div class="panel">
+        <h3>Резервная копия и перенос</h3>
+        <div class="row">
+          <button class="btn" id="sExport">Скачать копию (JSON)</button>
+          <button class="btn" id="sImportBtn">Загрузить JSON</button>
+          <input type="file" id="sImport" accept=".json,application/json" class="hidden">
+        </div>
+        <label class="chk" style="margin-top:10px"><input type="checkbox" id="sOverwrite"> Заменять записи, которые уже есть в базе</label>
+        <div class="note">Подходит и копия из прежней версии трекера (v28, кнопка «Скачать JSON»): даты, курсы и снимки перенесутся, долг Micle станет долгом с процентами.</div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<dialog id="rateDlg">
+  <h3 id="rdTitle">Курсы</h3>
+  <div class="form" style="margin-top:12px">
+    <label class="f">BTC, $<input type="number" step="any" data-k="btc"></label>
+    <label class="f">ETH, $<input type="number" step="any" data-k="eth"></label>
+    <label class="f">LTC, $<input type="number" step="any" data-k="ltc"></label>
+    <label class="f">GRAM, $<input type="number" step="any" data-k="gram"></label>
+    <label class="f">EUR, $<input type="number" step="any" data-k="eur"></label>
+    <label class="f">AED за $<input type="number" step="any" data-k="aed"></label>
+    <label class="f">RUB за $, вручную<input type="number" step="any" data-k="usdRubManual" placeholder="Курс ЦБ"></label>
+  </div>
+  <p class="note">Ручные значения криптовалют будут заменены при фиксации 23:59, если дата ещё не зафиксирована. Пустой курс рубля — используется курс ЦБ.</p>
+  <div class="row" style="margin-top:14px;justify-content:flex-end"><button class="btn" id="rdCancel">Отмена</button><button class="btn pri" id="rdSave">Сохранить</button></div>
+</dialog>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+'use strict';
+/* ═════════════ Константы и состояние ═════════════ */
+const LS = { cfg: 'ft30_cfg', cache: 'ft30_cache', pending: 'ft30_pending', ui: 'ft30_ui' };
+const CURS = ['USD', 'USDT', 'RUB', 'AED', 'EUR', 'BTC', 'ETH', 'LTC', 'GRAM'];
+const CRYPTO = ['BTC', 'ETH', 'LTC', 'GRAM'];
+const DEFAULT_SYMBOLS = { btc: 'BTCUSDT', eth: 'ETHUSDT', ltc: 'LTCUSDT', gram: 'TONUSDT', eur: 'EURUSDT' };
+const DEFAULT_CATS = ['Жильё и коммуналка', 'Продукты', 'Кафе и рестораны', 'Транспорт', 'Здоровье', 'Связь и подписки',
+  'Одежда', 'Дети и семья', 'Путешествия', 'Образование', 'Развлечения', 'Подарки', 'Проценты и комиссии', 'Прочее'];
+const PALETTE = ['#0A6C66', '#C27C1A', '#3A5BA0', '#9B3D6B', '#5C8A2E', '#B8452F', '#6A4FA3', '#2E8FA8', '#8A6D3B', '#4B6470', '#D0A42B', '#7A2E2E', '#3F8F6B', '#A35C8F'];
+const CUR_COLORS = { BTC: '#E08A1E', ETH: '#6272C9', LTC: '#8E9AA6', GRAM: '#1E8FD0', USDT: '#2A9D78', USD: '#4B6470', RUB: '#3A5BA0', AED: '#5C8A2E', EUR: '#9B3D6B' };
+const MONTHS = ['янв', 'фев', 'мар', 'апр', 'май', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
+const DAY = 864e5;
+
+const S = {
+  cfg: loadJSON(LS.cfg, {}), ui: loadJSON(LS.ui, { tab: 'overview', disp: 'USD' }), pending: loadJSON(LS.pending, []),
+  rates: [], snaps: {}, exps: [], settings: {}, version: null, today: todayDubai(),
+  R: [], RM: {}, live: null, charts: {}, editingExp: null, expMonth: null, ratesAll: false, busy: false
+};
+
+/* ═════════════ Утилиты ═════════════ */
+const $ = s => document.querySelector(s);
+function loadJSON(k, d) { try { const v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; } catch (e) { return d; } }
+function saveJSON(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+function uid() { return (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2, 10)); }
+function todayDubai() { return new Date(Date.now() + 4 * 3600e3).toISOString().slice(0, 10); }
+function addDays(iso, n) { const [y, m, d] = iso.split('-').map(Number); return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10); }
+function daysBetween(a, b) { return Math.round((Date.parse(b) - Date.parse(a)) / DAY); }
+function fd(iso) { if (!iso) return '—'; const [y, m, d] = iso.split('-'); return d + '.' + m + '.' + y; }
+function fdShort(iso) { const [y, m, d] = iso.split('-'); return d + '.' + m + '.' + y.slice(2); }
+function toIso(s) { s = String(s || '').trim(); const m = s.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/); if (m) return m[3] + '-' + m[2].padStart(2, '0') + '-' + m[1].padStart(2, '0'); return s.slice(0, 10); }
+function monthLabel(key) { const [y, m] = key.split('-'); return MONTHS[+m - 1] + ' ' + y; }
+function monthsBetween(a, b) { const [y1, m1] = a.split('-').map(Number), [y2, m2] = b.split('-').map(Number); return (y2 - y1) * 12 + (m2 - m1); }
+function shiftMonth(key, n) { const [y, m] = key.split('-').map(Number); const d = new Date(Date.UTC(y, m - 1 + n, 1)); return d.toISOString().slice(0, 7); }
+function daysInMonth(key) { const [y, m] = key.split('-').map(Number); return new Date(Date.UTC(y, m, 0)).getUTCDate(); }
+function nf(n, d = 0) { if (!isFinite(n)) n = 0; return n.toLocaleString('ru-RU', { minimumFractionDigits: d, maximumFractionDigits: d }); }
+function usd(n) { if (!isFinite(n)) n = 0; return (n < 0 ? '−' : '') + '$' + nf(Math.abs(n)); }
+function money(n, cur) {
+  if (!isFinite(n)) n = 0; const s = nf(Math.abs(n)), m = n < 0 ? '−' : '';
+  if (cur === 'USD') return m + '$' + s; if (cur === 'EUR') return m + '€' + s; if (cur === 'RUB') return m + s + ' ₽';
+  return m + s + ' ' + cur;
+}
+function signed(n, f) { f = f || usd; return (n > 0 ? '+' : n < 0 ? '−' : '') + f(Math.abs(n)); }
+function pct(n) { if (!isFinite(n)) return '—'; return (n > 0 ? '+' : n < 0 ? '−' : '') + nf(Math.abs(n), 1) + '%'; }
+function cls(n) { return n > 0 ? 'pos' : n < 0 ? 'neg' : 'mut'; }
+function qtyFmt(cur, q) { return (q || 0).toLocaleString('ru-RU', { maximumFractionDigits: CRYPTO.includes(cur) ? 4 : cur === 'USDT' ? 2 : 0 }); }
+function qtyInput(q) { return String(Math.round(q * 1e6) / 1e6); }
+function curTag(c) { return '<span class="tag cur c-' + esc(c) + '">' + esc(c) + '</span>'; }
+function cssVar(n) { return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+function setting(k, d) { const s = S.settings[k]; return s && s.value != null ? s.value : d; }
+
+let toastT;
+function toast(msg, err) { const t = $('#toast'); t.textContent = msg; t.className = 'toast on' + (err ? ' err' : ''); clearTimeout(toastT); toastT = setTimeout(() => t.className = 'toast', err ? 6000 : 3200); }
+function syncState(state, text) { $('#syncDot').className = 'dot ' + (state || ''); $('#syncText').textContent = text; }
+
+/* ═════════════ Сервер ═════════════ */
+async function api(action, body) {
+  if (!S.cfg.url) throw new Error('Не настроено подключение');
+  let res;
+  try {
+    res = await fetch(S.cfg.url, { method: 'POST', body: JSON.stringify(Object.assign({}, body, { action: action, token: S.cfg.token })) });
+  } catch (e) { const er = new Error('Нет связи с сервером'); er.net = true; throw er; }
+  if (!res.ok) throw new Error('Сервер ответил ошибкой ' + res.status);
+  let j; try { j = await res.json(); } catch (e) { throw new Error('Сервер вернул не JSON. Проверьте адрес и доступ «Все».'); }
+  if (!j.ok) { const er = new Error(j.error || 'Ошибка сервера'); er.conflict = j.conflict; throw er; }
+  return j;
+}
+
+/** Запись с проверкой конфликтов. queue=true — при отсутствии сети операция ждёт на устройстве. */
+async function send(action, body, queue) {
+  const prev = S.version;
+  syncState('busy', 'Сохранение…');
+  try {
+    const j = await api(action, body);
+    if (prev != null && j.version !== prev + 1) { S.version = j.version; load(true); }
+    else { S.version = j.version; syncState('ok', 'Сохранено ' + timeNow()); }
+    return j;
+  } catch (e) {
+    if (e.conflict) { toast(e.message, true); await load(true); throw e; }
+    if (e.net && queue) {
+      S.pending.push({ action: action, body: body }); saveJSON(LS.pending, S.pending);
+      syncState('err', 'Нет сети, ждут отправки: ' + S.pending.length);
+      toast('Нет сети. Запись сохранена на устройстве и уйдёт на сервер, когда появится связь.');
+      return null;
+    }
+    syncState('err', e.message); toast(e.message, true); throw e;
+  }
+}
+
+async function flushPending() {
+  let sent = 0;
+  while (S.pending.length) {
+    const op = S.pending[0];
+    try { await api(op.action, op.body); }
+    catch (e) {
+      if (e.net) break;
+      toast('Не удалось отправить отложенную запись: ' + e.message, true);
+    }
+    S.pending.shift(); saveJSON(LS.pending, S.pending); sent++;
+  }
+  return sent;
+}
+
+async function load(silent) {
+  if (!S.cfg.url) return;
+  syncState('busy', 'Загрузка…');
+  try {
+    const flushed = await flushPending();
+    const j = await api('load', {});
+    apply(j);
+    saveJSON(LS.cache, j);
+    syncState(S.pending.length ? 'err' : 'ok', S.pending.length ? 'Ждут отправки: ' + S.pending.length : 'Синхронизировано ' + timeNow());
+    if (flushed) toast('Отложенные записи отправлены: ' + flushed);
+  } catch (e) {
+    syncState('err', e.message);
+    if (!silent) toast(e.message, true);
+  }
+}
+
+function apply(j) {
+  S.rates = j.rates || []; S.snaps = j.snapshots || {}; S.exps = j.expenses || []; S.settings = j.settings || {};
+  S.version = j.version; S.today = j.today || todayDubai();
+  // отложенные (офлайн) расходы поверх серверных
+  S.pending.forEach(op => {
+    if (op.action === 'saveExpense') { S.exps = S.exps.filter(x => x.id !== op.body.expense.id); S.exps.push(Object.assign({ pending: true }, op.body.expense)); }
+    if (op.action === 'deleteExpense') S.exps = S.exps.filter(x => x.id !== op.body.id);
+  });
+  buildRates();
+  renderAll();
+}
+
+function timeNow() { return new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }); }
+
+/* ═════════════ Курсы ═════════════ */
+function buildRates() {
+  const sorted = S.rates.slice().sort((a, b) => a.date < b.date ? -1 : 1);
+  const carry = { btc: null, eth: null, ltc: null, gram: null, eur: null, aed: Number(setting('aedRate', 3.6725)), rub: null };
+  S.R = sorted.map(r => {
+    const o = { date: r.date, raw: r };
+    ['btc', 'eth', 'ltc', 'gram', 'eur', 'aed'].forEach(k => { if (r[k] != null) carry[k] = r[k]; o[k] = carry[k]; });
+    const rub = r.usdRubManual != null ? r.usdRubManual : r.usdRubCbr;
+    if (rub != null) carry.rub = rub;
+    o.rub = carry.rub; o.rubManual = r.usdRubManual != null;
+    return o;
+  });
+  S.RM = {}; S.R.forEach(r => S.RM[r.date] = r);
+}
+function lastRate() { return S.R.length ? S.R[S.R.length - 1] : { btc: 0, eth: 0, ltc: 0, gram: 0, eur: 1.17, aed: 3.6725, rub: 0 }; }
+/** Курсы «сейчас»: живые котировки поверх последних зафиксированных. */
+function current() {
+  const base = Object.assign({}, lastRate()), L = S.live || {};
+  ['btc', 'eth', 'ltc', 'gram', 'eur'].forEach(k => { if (L[k]) base[k] = L[k]; });
+  const todayRow = S.rates.find(r => r.date === S.today);
+  if (todayRow && todayRow.usdRubManual != null) { base.rub = todayRow.usdRubManual; base.rubManual = true; }
+  else if (L.rub) { base.rub = L.rub; base.rubManual = false; }
+  base.date = S.today; base.live = true;
+  return base;
+}
+function rateFor(date) {
+  if (!S.R.length || date >= S.today || date > S.R[S.R.length - 1].date) return date >= S.today || !S.R.length ? current() : lastRate();
+  if (S.RM[date]) return S.RM[date];
+  let lo = 0, hi = S.R.length - 1, res = S.R[0];
+  while (lo <= hi) { const mid = (lo + hi) >> 1; if (S.R[mid].date <= date) { res = S.R[mid]; lo = mid + 1; } else hi = mid - 1; }
+  return res;
+}
+/** Цена 1 единицы валюты в долларах. */
+function priceUsd(cur, r) {
+  switch (cur) {
+    case 'USD': case 'USDT': return 1;
+    case 'BTC': return r.btc || 0; case 'ETH': return r.eth || 0; case 'LTC': return r.ltc || 0; case 'GRAM': return r.gram || 0;
+    case 'EUR': return r.eur || 0;
+    case 'RUB': return r.rub ? 1 / r.rub : 0;
+    case 'AED': return r.aed ? 1 / r.aed : 0;
+  }
+  return 0;
+}
+function toUsd(cur, amount, r) { return (Number(amount) || 0) * priceUsd(cur, r); }
+function fromUsd(v, cur, r) { const p = priceUsd(cur, r); return p ? v / p : 0; }
+function rateShown(cur, r) {
+  if (cur === 'RUB') return r.rub ? nf(r.rub, 2) : '—';
+  if (cur === 'AED') return r.aed ? nf(r.aed, 4) : '—';
+  if (cur === 'USD' || cur === 'USDT') return '1';
+  const p = priceUsd(cur, r); return p ? nf(p, p < 10 ? 4 : 2) : '—';
+}
+
+/* живые котировки */
+async function fetchLive() {
+  const sym = Object.assign({}, DEFAULT_SYMBOLS, setting('binanceSymbols', {}));
+  const list = Object.values(sym);
+  const live = Object.assign({}, S.live || {});
+  let got = false;
+  for (const host of ['https://api.binance.com', 'https://data-api.binance.vision']) {
+    try {
+      const r = await fetch(host + '/api/v3/ticker/price?symbols=' + encodeURIComponent(JSON.stringify(list)));
+      if (!r.ok) continue;
+      const arr = await r.json();
+      Object.keys(sym).forEach(k => { const x = arr.find(a => a.symbol === sym[k]); if (x) live[k] = Number(x.price); });
+      got = true; break;
+    } catch (e) {}
+  }
+  if (!got) {
+    try {
+      const r = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,litecoin,the-open-network&vs_currencies=usd');
+      const d = await r.json();
+      live.btc = d.bitcoin.usd; live.eth = d.ethereum.usd; live.ltc = d.litecoin.usd; live.gram = d['the-open-network'].usd; got = true;
+    } catch (e) {}
+  }
+  try {
+    const r = await fetch('https://www.cbr-xml-daily.ru/daily_json.js');
+    const d = await r.json(); if (d.Valute && d.Valute.USD) live.rub = d.Valute.USD.Value / d.Valute.USD.Nominal;
+  } catch (e) {}
+  if (got || live.rub) { live.at = Date.now(); S.live = live; }
+  const el = document.activeElement;
+  const typing = el && /INPUT|SELECT|TEXTAREA/.test(el.tagName);
+  renderHero();
+  if (!typing && (S.ui.tab === 'overview' || (S.ui.tab === 'portfolio' && $('#pDate').value === 'now'))) renderTab();
+}
+
+/* ═════════════ Портфель ═════════════ */
+function snapDates() { return Object.keys(S.snaps).sort(); }
+function snapDateFor(date) { const ds = snapDates(); let r = null; for (const d of ds) { if (d <= date) r = d; else break; } return r || ds[0] || null; }
+function holdingsAt(date) { const d = snapDateFor(date); return d ? S.snaps[d].holdings : []; }
+function qtyOf(h, date) {
+  if (h.interest && h.interest.start) {
+    const n = monthsBetween(h.interest.start, date);
+    return n < 0 ? 0 : h.interest.principal * (1 + h.interest.annualRate / 100 / 12 * n);
+  }
+  return Number(h.qty) || 0;
+}
+function compute(holdings, r, date) {
+  let assets = 0, liab = 0; const A = [], D = [];
+  holdings.forEach((h, i) => {
+    const q = qtyOf(h, date), v = toUsd(h.cur, q, r);
+    const row = { i: i, h: h, name: h.name, cur: h.cur, qty: q, usd: v };
+    if (h.type === 'debt') { liab += v; D.push(row); } else { assets += v; A.push(row); }
+  });
+  A.sort((a, b) => b.usd - a.usd); D.sort((a, b) => b.usd - a.usd);
+  return { A: A, D: D, assets: assets, liab: liab, nav: assets - liab };
+}
+function navNow() { return compute(holdingsAt(S.today), current(), S.today); }
+function navSeries() {
+  const out = S.R.map(r => ({ date: r.date, nav: compute(holdingsAt(r.date), r, r.date).nav }));
+  if (!out.length || out[out.length - 1].date < S.today) out.push({ date: S.today, nav: navNow().nav, live: true });
+  return out;
+}
+function navAt(series, date) { let r = null; for (const p of series) { if (p.date <= date) r = p; else break; } return r; }
+
+/* ═════════════ Расходы ═════════════ */
+function expUsd(x) { return toUsd(x.currency, x.amount, rateFor(x.date)); }
+function dispCur() { return S.ui.disp || 'USD'; }
+function inDisp(usdV, date) { const c = dispCur(); if (c === 'USD' || c === 'USDT') return usdV; return fromUsd(usdV, c, rateFor(date)); }
+function dm(v) { return money(v, dispCur()); }
+function monthTotals() {
+  const m = {};
+  S.exps.forEach(x => { const k = x.date.slice(0, 7); m[k] = (m[k] || 0) + inDisp(expUsd(x), x.date); });
+  return m;
+}
+function categories() { const c = setting('categories', DEFAULT_CATS); return Array.isArray(c) && c.length ? c : DEFAULT_CATS; }
+
+/* ═════════════ Графики ═════════════ */
+function base(extra) {
+  const c = cssVar('--muted'), g = cssVar('--line');
+  const o = {
+    responsive: true, maintainAspectRatio: false, animation: false, interaction: { mode: 'index', intersect: false },
+    plugins: { legend: { labels: { color: c, boxWidth: 10, boxHeight: 10 } } },
+    scales: { x: { ticks: { color: c, maxTicksLimit: 8, autoSkip: true }, grid: { display: false } }, y: { ticks: { color: c }, grid: { color: g } } }
+  };
+  return Object.assign(o, extra || {});
+}
+function mk(id, cfg) { if (S.charts[id]) S.charts[id].destroy(); const el = document.getElementById(id); if (!el || !window.Chart) return; S.charts[id] = new Chart(el, cfg); }
+function compact(v) { const a = Math.abs(v); return (v < 0 ? '−' : '') + (a >= 1e6 ? nf(a / 1e6, 2) + ' млн' : a >= 1e3 ? nf(a / 1e3, 0) + ' тыс' : nf(a, 0)); }
+
+/* ═════════════ Отрисовка ═════════════ */
+function renderAll() { renderHero(); renderTab(); }
+
+function renderHero() {
+  const now = navNow();
+  $('#heroNav').textContent = usd(now.nav);
+  $('#heroNav').className = 'hero-num' + (now.nav < 0 ? ' neg' : '');
+  const ser = navSeries();
+  const p30 = navAt(ser, addDays(S.today, -30)), pm = navAt(ser, addDays(S.today.slice(0, 7) + '-01', -1));
+  $('#heroD30').innerHTML = p30 ? 'За 30 дней <b class="' + cls(now.nav - p30.nav) + '">' + signed(now.nav - p30.nav) + ' (' + pct((now.nav - p30.nav) / Math.abs(p30.nav || 1) * 100) + ')</b>' : '';
+  $('#heroMtd').innerHTML = pm ? 'С начала месяца <b class="' + cls(now.nav - pm.nav) + '">' + signed(now.nav - pm.nav) + '</b>' : '';
+  const fixed = S.rates.filter(r => r.fixedAt).map(r => r.date).sort();
+  const lastFixed = fixed[fixed.length - 1];
+  const yesterday = addDays(S.today, -1);
+  const st = $('#stamp');
+  if (!lastFixed) { st.className = 'stamp late'; $('#stampText').textContent = 'курсы ещё не фиксировались'; }
+  else { st.className = 'stamp' + (lastFixed < yesterday ? ' late' : ''); $('#stampText').textContent = 'Дубай, последний закрытый день ' + fd(lastFixed) + (lastFixed < yesterday ? ' — есть пропуски' : ''); }
+  const pts = ser.slice(-120);
+  mk('spark', { type: 'line', data: { labels: pts.map(p => p.date), datasets: [{ data: pts.map(p => p.nav), borderColor: cssVar('--accent'), borderWidth: 2, pointRadius: 0, tension: .25, fill: false }] },
+    options: { responsive: true, maintainAspectRatio: false, animation: false, plugins: { legend: { display: false }, tooltip: { enabled: false } }, scales: { x: { display: false }, y: { display: false } } } });
+}
+
+function renderTab() {
+  document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', t.dataset.tab === S.ui.tab));
+  document.querySelectorAll('.view').forEach(v => v.classList.toggle('on', v.id === 'v-' + S.ui.tab));
+  ({ overview: rOverview, expenses: rExpenses, portfolio: rPortfolio, compare: rCompare, forecast: rForecast, rates: rRates, debts: rDebts, settings: rSettings })[S.ui.tab]();
+}
+
+/* ── Обзор ── */
+function rOverview() {
+  const now = navNow();
+  const mk0 = S.today.slice(0, 7), tot = monthTotals();
+  const cur = tot[mk0] || 0, prev = tot[shiftMonth(mk0, -1)] || 0;
+  const dayN = +S.today.slice(8, 10), proj = cur / dayN * daysInMonth(mk0);
+  $('#ovKpis').innerHTML =
+    kpi('Активы', usd(now.assets)) + kpi('Долги', usd(now.liab), now.assets ? 'Доля долга ' + nf(now.liab / now.assets * 100, 1) + '%' : '') +
+    kpi('Расходы за ' + monthLabel(mk0), dm(cur), 'Прогноз на месяц ' + dm(proj)) +
+    kpi('Прошлый месяц', dm(prev), prev ? 'Сейчас ' + nf(cur / prev * 100, 0) + '% от него' : '');
+  const range = +$('#ovRange').value; let ser = navSeries();
+  if (range) ser = ser.filter(p => p.date >= addDays(S.today, -range));
+  mk('ovNav', { type: 'line', data: { labels: ser.map(p => fdShort(p.date)), datasets: [{ label: 'Чистые активы, $', data: ser.map(p => p.nav), borderColor: cssVar('--accent'), backgroundColor: cssVar('--accent-soft'), fill: true, pointRadius: 0, borderWidth: 2, tension: .2 }] },
+    options: base({ plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => usd(c.parsed.y) } } } }) });
+  const c = current(), l = lastRate();
+  const rows = [['BTC', 'btc'], ['ETH', 'eth'], ['LTC', 'ltc'], ['GRAM', 'gram'], ['EUR', 'eur']].map(([n, k]) => {
+    const d = l[k] ? (c[k] - l[k]) / l[k] * 100 : NaN;
+    return '<tr><td>' + curTag(n) + '</td><td class="n">$' + nf(c[k] || 0, c[k] < 10 ? 4 : 2) + '</td><td class="n ' + cls(d) + '">' + pct(d) + '</td></tr>';
+  });
+  rows.push('<tr><td>' + curTag('RUB') + '</td><td class="n">' + (c.rub ? nf(c.rub, 2) + ' ₽ за $' : '—') + (c.rubManual ? ' <span class="tag manual">вручную</span>' : '') + '</td><td class="n mut">ЦБ</td></tr>');
+  rows.push('<tr><td>' + curTag('AED') + '</td><td class="n">' + nf(c.aed, 4) + ' за $</td><td class="n mut">привязка</td></tr>');
+  $('#ovLive').innerHTML = '<thead><tr><th>Валюта</th><th class="n">Курс</th><th class="n">За день</th></tr></thead><tbody>' + rows.join('') + '</tbody>' +
+    (S.live ? '' : '<tfoot><tr><td colspan="3" class="mut" style="font-weight:400;border-top:1px solid var(--line)">Живые котировки недоступны, показаны последние зафиксированные.</td></tr></tfoot>');
+  const recent = S.exps.slice().sort((a, b) => (b.date + b.updatedAt) < (a.date + a.updatedAt) ? -1 : 1).slice(0, 6);
+  $('#ovExp').innerHTML = recent.length ? '<tbody>' + recent.map(x => '<tr><td>' + fd(x.date) + '</td><td>' + esc(x.category) + (x.note ? '<div class="note" style="margin:0">' + esc(x.note) + '</div>' : '') + '</td><td class="n">' + money(x.amount, x.currency) + '</td></tr>').join('') + '</tbody>'
+    : '<tbody><tr><td class="mut">Расходов пока нет. Добавьте первый — он сразу появится на всех устройствах.</td></tr></tbody>';
+}
+function kpi(k, v, s) { return '<div class="kpi"><div class="k">' + k + '</div><div class="v">' + v + '</div>' + (s ? '<div class="s">' + s + '</div>' : '') + '</div>'; }
+
+/* ── Расходы ── */
+function fillExpForm() {
+  const cats = categories();
+  $('#eCat').innerHTML = cats.map(c => '<option>' + esc(c) + '</option>').join('');
+  $('#eCur').innerHTML = CURS.map(c => '<option>' + c + '</option>').join('');
+  $('#expDisp').innerHTML = ['USD', 'RUB', 'AED', 'EUR'].map(c => '<option value="' + c + '"' + (c === dispCur() ? ' selected' : '') + '>Итоги в ' + c + '</option>').join('');
+  if (!S.editingExp) {
+    if (!$('#eDate').value) $('#eDate').value = S.today;
+    $('#eCur').value = setting('defaultCurrency', 'RUB');
+  }
+}
+function rExpenses() {
+  fillExpForm();
+  if (!S.expMonth) S.expMonth = S.today.slice(0, 7);
+  $('#expMonth').value = S.expMonth;
+  const mkey = S.expMonth, list = S.exps.filter(x => x.date.slice(0, 7) === mkey).sort((a, b) => a.date < b.date ? 1 : -1);
+  const tot = monthTotals(), cur = tot[mkey] || 0, prev = tot[shiftMonth(mkey, -1)] || 0;
+  const isCur = mkey === S.today.slice(0, 7);
+  const days = isCur ? +S.today.slice(8, 10) : daysInMonth(mkey);
+  const budget = Number(setting('monthlyBudget', 0)), bcur = setting('budgetCurrency', 'USD');
+  const budgetDisp = budget ? inDisp(toUsd(bcur, budget, rateFor(isCur ? S.today : mkey + '-' + String(daysInMonth(mkey)).padStart(2, '0'))), S.today) : 0;
+  let k = kpi('Итого за ' + monthLabel(mkey), dm(cur), list.length + ' записей') + kpi('В среднем в день', dm(cur / days));
+  if (isCur) k += kpi('Прогноз на месяц', dm(cur / days * daysInMonth(mkey)), 'Если темп сохранится');
+  k += kpi('К прошлому месяцу', prev ? '<span class="' + cls(-(cur - prev)) + '">' + pct((cur - prev) / prev * 100) + '</span>' : '—', prev ? dm(prev) + ' в ' + monthLabel(shiftMonth(mkey, -1)) : '');
+  if (budget) k += kpi('Бюджет', dm(budgetDisp - cur), budgetDisp ? 'Осталось, израсходовано ' + nf(cur / budgetDisp * 100, 0) + '%' : '');
+  $('#expKpis').innerHTML = k;
+
+  const byCat = {}; list.forEach(x => byCat[x.category] = (byCat[x.category] || 0) + inDisp(expUsd(x), x.date));
+  const cats = Object.entries(byCat).sort((a, b) => b[1] - a[1]);
+  const prevBy = {}; S.exps.filter(x => x.date.slice(0, 7) === shiftMonth(mkey, -1)).forEach(x => prevBy[x.category] = (prevBy[x.category] || 0) + inDisp(expUsd(x), x.date));
+  const max = cats.length ? cats[0][1] : 1;
+  $('#expCats').innerHTML = cats.length ? '<thead><tr><th>Категория</th><th class="n">Сумма</th><th class="n">Доля</th><th style="width:28%"></th><th class="n">Прошлый</th></tr></thead><tbody>' +
+    cats.map(([c, v], i) => '<tr><td>' + esc(c) + '</td><td class="n">' + dm(v) + '</td><td class="n">' + nf(v / cur * 100, 1) + '%</td><td><div class="bar" style="width:' + (v / max * 100) + '%;background:' + PALETTE[i % PALETTE.length] + '"></div></td><td class="n mut">' + (prevBy[c] ? dm(prevBy[c]) : '—') + '</td></tr>').join('') +
+    '</tbody><tfoot><tr><td>Итого</td><td class="n">' + dm(cur) + '</td><td class="n">100%</td><td></td><td class="n">' + dm(prev) + '</td></tr></tfoot>'
+    : '<tbody><tr><td class="mut">В этом месяце расходов нет.</td></tr></tbody>';
+  mk('expPie', { type: 'doughnut', data: { labels: cats.map(c => c[0]), datasets: [{ data: cats.map(c => c[1]), backgroundColor: cats.map((_, i) => PALETTE[i % PALETTE.length]), borderColor: cssVar('--surface'), borderWidth: 2 }] },
+    options: { responsive: true, maintainAspectRatio: false, animation: false, cutout: '58%', plugins: { legend: { position: 'right', labels: { color: cssVar('--muted'), boxWidth: 10 } }, tooltip: { callbacks: { label: c => c.label + ': ' + dm(c.parsed) } } } } });
+
+  const months = []; for (let i = 11; i >= 0; i--) months.push(shiftMonth(S.today.slice(0, 7), -i));
+  mk('expMonths', { type: 'bar', data: { labels: months.map(monthLabel), datasets: [{ label: 'Расходы, ' + dispCur(), data: months.map(m => tot[m] || 0), backgroundColor: months.map(m => m === mkey ? cssVar('--accent') : cssVar('--line')), borderRadius: 4 }] },
+    options: base({ plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => dm(c.parsed.y) } } } }) });
+
+  $('#expListTitle').textContent = 'Записи за ' + monthLabel(mkey);
+  $('#expList').innerHTML = list.length ? '<thead><tr><th>Дата</th><th>Категория</th><th>Комментарий</th><th class="n">Сумма</th><th class="n">В ' + dispCur() + '</th><th></th></tr></thead><tbody>' +
+    list.map(x => '<tr><td>' + fd(x.date) + '</td><td>' + esc(x.category) + (x.pending ? ' <span class="tag manual">не отправлено</span>' : '') + '</td><td class="mut">' + esc(x.note) + '</td><td class="n">' + money(x.amount, x.currency) + '</td><td class="n mut">' + dm(inDisp(expUsd(x), x.date)) +
+      '</td><td class="n"><button class="icon" data-edit="' + esc(x.id) + '" aria-label="Изменить">✎</button><button class="icon" data-del="' + esc(x.id) + '" aria-label="Удалить">✕</button></td></tr>').join('') + '</tbody>'
+    : '<tbody><tr><td class="mut">Записей нет.</td></tr></tbody>';
+  const r = rateFor($('#eDate').value || S.today);
+  $('#eHint').textContent = 'Сумма пересчитывается в доллары по курсу на дату расхода' + ((($('#eDate').value || S.today) >= S.today) ? ' (сегодня — по текущему курсу, после 23:59 по Дубаю — по зафиксированному).' : '.') + (r.rub ? ' USD/RUB на эту дату: ' + nf(r.rub, 2) + '.' : '');
+}
+
+async function saveExpense() {
+  const amount = Number($('#eAmount').value);
+  if (!amount || amount <= 0) return toast('Укажите сумму больше нуля', true);
+  const date = $('#eDate').value || S.today;
+  const x = { id: S.editingExp ? S.editingExp.id : uid(), date: date, amount: amount, currency: $('#eCur').value, category: $('#eCat').value, note: $('#eNote').value.trim() };
+  const base = S.editingExp ? { baseUpdatedAt: S.editingExp.updatedAt || '' } : {};
+  const old = S.exps.slice();
+  S.exps = S.exps.filter(e => e.id !== x.id).concat([Object.assign({ updatedAt: '' }, x)]);
+  const editing = !!S.editingExp;
+  resetExpForm(); S.expMonth = date.slice(0, 7); renderAll();
+  try {
+    const j = await send('saveExpense', Object.assign({ expense: x }, base), true);
+    if (j && j.expense) { S.exps = S.exps.filter(e => e.id !== x.id).concat([j.expense]); toast(editing ? 'Расход изменён' : 'Расход добавлен'); }
+    else if (j === null) S.exps.find(e => e.id === x.id).pending = true;
+    renderAll();
+  } catch (e) { if (!e.conflict) { S.exps = old; renderAll(); } }
+}
+function resetExpForm() {
+  S.editingExp = null; $('#eAmount').value = ''; $('#eNote').value = ''; $('#eDate').value = S.today;
+  $('#expFormTitle').textContent = 'Новый расход'; $('#eSave').textContent = 'Добавить'; $('#eCancel').classList.add('hidden');
+}
+function editExpense(id) {
+  const x = S.exps.find(e => e.id === id); if (!x) return;
+  S.editingExp = x; fillExpForm();
+  $('#eDate').value = x.date; $('#eAmount').value = x.amount; $('#eCur').value = x.currency; $('#eNote').value = x.note || '';
+  if (!categories().includes(x.category)) $('#eCat').insertAdjacentHTML('beforeend', '<option>' + esc(x.category) + '</option>');
+  $('#eCat').value = x.category;
+  $('#expFormTitle').textContent = 'Изменить расход'; $('#eSave').textContent = 'Сохранить'; $('#eCancel').classList.remove('hidden');
+  $('#expFormPanel').scrollIntoView({ behavior: 'smooth', block: 'start' }); $('#eAmount').focus();
+}
+async function deleteExpense(id) {
+  const x = S.exps.find(e => e.id === id); if (!x || !confirm('Удалить расход ' + money(x.amount, x.currency) + ' от ' + fd(x.date) + '?')) return;
+  const old = S.exps.slice(); S.exps = S.exps.filter(e => e.id !== id); renderAll();
+  try { await send('deleteExpense', { id: id }, true); toast('Расход удалён'); } catch (e) { S.exps = old; renderAll(); }
+}
+
+/* ── Портфель ── */
+function dateOptions(sel, withNow, value) {
+  const opts = (withNow ? ['<option value="now">Сегодня, текущие курсы</option>'] : []).concat(S.R.slice().reverse().map(r => '<option value="' + r.date + '">' + fd(r.date) + '</option>'));
+  sel.innerHTML = opts.join('');
+  if (value && [...sel.options].some(o => o.value === value)) sel.value = value;
+}
+function pDate() { const v = $('#pDate').value || 'now'; return v === 'now' ? S.today : v; }
+function rPortfolio() {
+  const keep = $('#pDate').value || 'now';
+  dateOptions($('#pDate'), true, keep);
+  $('#hCur').innerHTML = CURS.map(c => '<option>' + c + '</option>').join('');
+  const date = pDate(), r = $('#pDate').value === 'now' ? current() : rateFor(date);
+  const hs = holdingsAt(date), res = compute(hs, r, date), sd = snapDateFor(date);
+  const own = sd === date && S.snaps[date];
+  $('#pInfo').innerHTML = !sd ? 'Портфель пуст. Добавьте позиции ниже — они будут действовать с ' + fd(date) + '.'
+    : own ? 'Состав записан на ' + fd(date) + ' и действует до следующей записи. Изменения правят именно эту запись.'
+    : 'Действует состав от ' + fd(sd) + '. Если изменить количество, появится новая запись от ' + fd(date) + ' — она будет действовать с этой даты до следующей.';
+  $('#pSnapActions').innerHTML = own && snapDates().length > 1 ? '<button class="btn sm bad" id="pDelSnap">Удалить запись от ' + fd(date) + '</button>' : '';
+  $('#pKpis').innerHTML = kpi('Чистые активы', usd(res.nav)) + kpi('Активы', usd(res.assets)) + kpi('Долги', usd(res.liab)) + kpi('Доля долга', res.assets ? nf(res.liab / res.assets * 100, 1) + '%' : '—');
+  const table = (rows, total, sign) => '<thead><tr><th>Позиция</th><th>Валюта</th><th class="n">Кол-во</th><th class="n">Курс</th><th class="n">$</th><th></th></tr></thead><tbody>' +
+    rows.map(x => '<tr><td>' + esc(x.name) + (x.h.interest ? ' <span class="tag">' + nf(x.h.interest.annualRate, 1) + '% год.</span>' : '') + '</td><td>' + curTag(x.cur) + '</td><td class="n">' +
+      (x.h.interest ? nf(x.qty) : '<input class="q" type="number" step="any" inputmode="decimal" value="' + qtyInput(x.qty) + '" data-qty="' + x.i + '" aria-label="Количество ' + esc(x.name) + '">') +
+      '</td><td class="n mut">' + rateShown(x.cur, r) + '</td><td class="n ' + sign + '">' + usd(x.usd) + '</td><td class="n"><button class="icon" data-rm="' + x.i + '" aria-label="Удалить">✕</button></td></tr>').join('') +
+    '</tbody><tfoot><tr><td colspan="4">Итого</td><td class="n">' + usd(total) + '</td><td></td></tr></tfoot>';
+  $('#pAssets').innerHTML = table(res.A, res.assets, '');
+  $('#pDebts').innerHTML = table(res.D, res.liab, '');
+  const pie = (id, rows) => mk(id, { type: 'doughnut', data: { labels: rows.map(x => x.name), datasets: [{ data: rows.map(x => x.usd), backgroundColor: rows.map((_, i) => PALETTE[i % PALETTE.length]), borderColor: cssVar('--surface'), borderWidth: 2 }] },
+    options: { responsive: true, maintainAspectRatio: false, animation: false, cutout: '58%', plugins: { legend: { position: 'right', labels: { color: cssVar('--muted'), boxWidth: 10 } }, tooltip: { callbacks: { label: c => c.label + ': ' + usd(c.parsed) + ' (' + nf(c.parsed / (id === 'pPieA' ? res.assets : res.liab) * 100, 1) + '%)' } } } } });
+  pie('pPieA', res.A); pie('pPieD', res.D);
+  if (!$('#hIntStart').value) $('#hIntStart').value = S.today;
+}
+async function saveHoldings(date, holdings, msg) {
+  const own = S.snaps[date];
+  const prev = S.snaps[date];
+  S.snaps[date] = { holdings: holdings, updatedAt: own ? own.updatedAt : '' };
+  renderAll();
+  try {
+    const j = await send('saveSnapshot', { date: date, holdings: holdings, baseUpdatedAt: own ? own.updatedAt : '' });
+    S.snaps[date].updatedAt = j.updatedAt; toast(msg || 'Портфель сохранён');
+  } catch (e) { if (!e.conflict) { if (prev) S.snaps[date] = prev; else delete S.snaps[date]; renderAll(); } }
+}
+function cloneH(hs) { return JSON.parse(JSON.stringify(hs)); }
+
+/* ── Сравнение ── */
+function rCompare() {
+  const f0 = $('#cFrom').value, t0 = $('#cTo').value;
+  dateOptions($('#cFrom'), true, f0); dateOptions($('#cTo'), true, t0 || 'now');
+  if (!f0) { const d30 = addDays(S.today, -30); const opt = S.R.slice().reverse().find(r => r.date <= d30) || S.R[0]; if (opt) $('#cFrom').value = opt.date; }
+  const fd0 = $('#cFrom').value === 'now' ? S.today : $('#cFrom').value, td0 = $('#cTo').value === 'now' ? S.today : $('#cTo').value;
+  const rF = $('#cFrom').value === 'now' ? current() : rateFor(fd0), rT = $('#cTo').value === 'now' ? current() : rateFor(td0);
+  const hF = holdingsAt(fd0), hT = holdingsAt(td0);
+  const A = compute(hF, rF, fd0), B = compute(hT, rT, td0);
+  $('#cKpis').innerHTML = kpi('Чистые активы', usd(B.nav), '<span class="' + cls(B.nav - A.nav) + '">' + signed(B.nav - A.nav) + ' (' + pct((B.nav - A.nav) / Math.abs(A.nav || 1) * 100) + ')</span>') +
+    kpi('Активы', usd(B.assets), '<span class="' + cls(B.assets - A.assets) + '">' + signed(B.assets - A.assets) + '</span>') +
+    kpi('Долги', usd(B.liab), '<span class="' + cls(A.liab - B.liab) + '">' + signed(B.liab - A.liab) + '</span>') +
+    kpi('Расходы за период', dm(S.exps.filter(x => x.date > fd0 && x.date <= td0).reduce((s, x) => s + inDisp(expUsd(x), x.date), 0)));
+  const qty = (hs, cur, date) => hs.filter(h => h.type !== 'debt' && h.cur === cur).reduce((s, h) => s + qtyOf(h, date), 0);
+  const rows = CURS.map(cur => {
+    const qF = qty(hF, cur, fd0), qT = qty(hT, cur, td0); if (!qF && !qT) return null;
+    const uF = toUsd(cur, qF, rF), uT = toUsd(cur, qT, rT), dP = toUsd(cur, qF, rT) - uF, dT = uT - uF;
+    return { cur, qF, qT, uF, uT, dP, dQ: dT - dP, dT, p: uF ? dT / uF * 100 : NaN };
+  }).filter(Boolean).sort((a, b) => b.uT - a.uT);
+  const sum = k => rows.reduce((s, r) => s + r[k], 0);
+  $('#cTable').innerHTML = '<thead><tr><th>Валюта</th><th class="n">Кол-во, нач.</th><th class="n">Кол-во, кон.</th><th class="n">Курс нач.</th><th class="n">Курс кон.</th><th class="n">$ нач.</th><th class="n">$ кон.</th><th class="n">Курс</th><th class="n">Количество</th><th class="n">Итого</th><th class="n">%</th></tr></thead><tbody>' +
+    rows.map(r => '<tr><td>' + curTag(r.cur) + '</td><td class="n">' + qtyFmt(r.cur, r.qF) + '</td><td class="n' + (Math.abs(r.qF - r.qT) > 1e-9 ? ' ' + cls(r.qT - r.qF) : '') + '">' + qtyFmt(r.cur, r.qT) + '</td><td class="n mut">' + rateShown(r.cur, rF) + '</td><td class="n mut">' + rateShown(r.cur, rT) +
+      '</td><td class="n">' + usd(r.uF) + '</td><td class="n">' + usd(r.uT) + '</td><td class="n ' + cls(r.dP) + '">' + signed(r.dP) + '</td><td class="n ' + cls(r.dQ) + '">' + signed(r.dQ) + '</td><td class="n ' + cls(r.dT) + '"><b>' + signed(r.dT) + '</b></td><td class="n ' + cls(r.p) + '">' + pct(r.p) + '</td></tr>').join('') +
+    '</tbody><tfoot><tr><td colspan="5">Итого</td><td class="n">' + usd(sum('uF')) + '</td><td class="n">' + usd(sum('uT')) + '</td><td class="n ' + cls(sum('dP')) + '">' + signed(sum('dP')) + '</td><td class="n ' + cls(sum('dQ')) + '">' + signed(sum('dQ')) + '</td><td class="n ' + cls(sum('dT')) + '">' + signed(sum('dT')) + '</td><td class="n">' + pct(sum('uF') ? sum('dT') / sum('uF') * 100 : NaN) + '</td></tr></tfoot>';
+  const pts = S.R.filter(r => r.date >= fd0 && r.date <= td0);
+  if ($('#cTo').value === 'now' && (!pts.length || pts[pts.length - 1].date < S.today)) pts.push(current());
+  mk('cChart', { type: 'line', data: { labels: pts.map(p => fdShort(p.date)), datasets: rows.map(r => ({ label: r.cur, borderColor: CUR_COLORS[r.cur], pointRadius: 0, borderWidth: 2, tension: .2,
+    data: pts.map(p => { const v = toUsd(r.cur, qty(holdingsAt(p.date), r.cur, p.date), p); return r.uF ? v / r.uF * 100 : null; }) })) },
+    options: base({ plugins: { legend: { labels: { color: cssVar('--muted'), boxWidth: 10 } }, tooltip: { callbacks: { label: c => c.dataset.label + ': ' + nf(c.parsed.y, 1) } } } }) });
+}
+
+/* ── Прогноз ── */
+function regress(xs, ys) {
+  const n = xs.length; let sx = 0, sy = 0, sxy = 0, sxx = 0;
+  for (let i = 0; i < n; i++) { sx += xs[i]; sy += ys[i]; sxy += xs[i] * ys[i]; sxx += xs[i] * xs[i]; }
+  const den = n * sxx - sx * sx, slope = den ? (n * sxy - sx * sy) / den : 0, icpt = (sy - slope * sx) / n;
+  let st = 0, sr = 0; const ym = sy / n;
+  for (let i = 0; i < n; i++) { st += (ys[i] - ym) ** 2; sr += (ys[i] - (slope * xs[i] + icpt)) ** 2; }
+  return { slope, icpt, r2: st ? 1 - sr / st : 0, sd: n > 2 ? Math.sqrt(sr / (n - 2)) : 0 };
+}
+function rForecast() {
+  const H = +$('#fH').value, B = +$('#fBase').value;
+  let ser = navSeries(); if (B) ser = ser.filter(p => p.date >= addDays(S.today, -B));
+  if (ser.length < 3) { $('#fKpis').innerHTML = kpi('Мало данных', '—', 'Нужно хотя бы 3 даты'); return; }
+  const d0 = ser[0].date, xs = ser.map(p => daysBetween(d0, p.date)), ys = ser.map(p => p.nav), reg = regress(xs, ys);
+  const lastX = xs[xs.length - 1], nowNav = ys[ys.length - 1], fx = lastX + H, fNav = reg.slope * fx + reg.icpt;
+  $('#fKpis').innerHTML = kpi('Сейчас', usd(nowNav)) + kpi('Через ' + H + ' дн. по тренду', usd(fNav), 'Коридор ' + usd(fNav - 2 * reg.sd) + ' … ' + usd(fNav + 2 * reg.sd)) +
+    kpi('Тренд за 30 дней', '<span class="' + cls(reg.slope) + '">' + signed(reg.slope * 30) + '</span>') +
+    kpi('Надёжность тренда (R²)', nf(reg.r2, 2), reg.r2 > .7 ? 'Тренд выражен хорошо' : reg.r2 > .4 ? 'Тренд выражен умеренно' : 'Тренд слабый, прогноз неточен');
+  const labels = ser.map(p => p.date), fut = [];
+  const step = Math.max(1, Math.round(H / 30));
+  for (let d = step; d <= H; d += step) fut.push(addDays(ser[ser.length - 1].date, d));
+  const all = labels.concat(fut), trend = all.map(d => reg.slope * daysBetween(d0, d) + reg.icpt);
+  const fact = ys.concat(fut.map(() => null));
+  mk('fChart', { type: 'line', data: { labels: all.map(fdShort), datasets: [
+    { label: 'Факт', data: fact, borderColor: cssVar('--accent'), pointRadius: 0, borderWidth: 2, tension: .2 },
+    { label: 'Тренд', data: trend, borderColor: cssVar('--gold'), borderDash: [6, 4], pointRadius: 0, borderWidth: 2 },
+    { label: 'Коридор', data: trend.map(v => v + 2 * reg.sd), borderColor: 'transparent', backgroundColor: 'rgba(160,112,26,.12)', pointRadius: 0, fill: '+1' },
+    { label: 'Коридор низ', data: trend.map(v => v - 2 * reg.sd), borderColor: 'transparent', pointRadius: 0, fill: false }
+  ] }, options: base({ plugins: { legend: { labels: { color: cssVar('--muted'), boxWidth: 10, filter: i => i.text !== 'Коридор низ' } }, tooltip: { callbacks: { label: c => c.dataset.label + ': ' + usd(c.parsed.y) } } } }) });
+
+  // расходы
+  const mk0 = S.today.slice(0, 7), full = [1, 2, 3].map(i => shiftMonth(mk0, -i));
+  const cats = {}; S.exps.forEach(x => { const m = x.date.slice(0, 7); const v = inDisp(expUsd(x), x.date); (cats[x.category] = cats[x.category] || {})[m] = (cats[x.category][m] || 0) + v; });
+  const dayN = +S.today.slice(8, 10), dim = daysInMonth(mk0), months = H / 30.4;
+  const rows = Object.keys(cats).map(c => { const avg = full.reduce((s, m) => s + (cats[c][m] || 0), 0) / 3, now = cats[c][mk0] || 0; return { c, avg, now, proj: now / dayN * dim, hor: avg * months }; })
+    .filter(r => r.avg || r.now).sort((a, b) => b.avg - a.avg);
+  const T = k => rows.reduce((s, r) => s + r[k], 0);
+  $('#fExp').innerHTML = rows.length ? '<thead><tr><th>Категория</th><th class="n">Среднее за 3 мес.</th><th class="n">' + monthLabel(mk0) + ', факт</th><th class="n">' + monthLabel(mk0) + ', прогноз</th><th class="n">За ' + H + ' дн.</th></tr></thead><tbody>' +
+    rows.map(r => '<tr><td>' + esc(r.c) + '</td><td class="n">' + dm(r.avg) + '</td><td class="n">' + dm(r.now) + '</td><td class="n ' + (r.avg && r.proj > r.avg * 1.1 ? 'neg' : '') + '">' + dm(r.proj) + '</td><td class="n">' + dm(r.hor) + '</td></tr>').join('') +
+    '</tbody><tfoot><tr><td>Итого</td><td class="n">' + dm(T('avg')) + '</td><td class="n">' + dm(T('now')) + '</td><td class="n">' + dm(T('proj')) + '</td><td class="n">' + dm(T('hor')) + '</td></tr></tfoot>'
+    : '<tbody><tr><td class="mut">Добавьте расходы — здесь появится прогноз по категориям.</td></tr></tbody>';
+  $('#fExpNote').textContent = 'Прогноз месяца — текущий темп трат, продлённый до конца месяца. Прогноз на горизонт — среднее за три полных месяца (' + full.map(monthLabel).reverse().join(', ') + '). Красным — категории, где месяц идёт дороже среднего более чем на 10%.';
+}
+
+/* ── Курсы ── */
+function rRates() {
+  if (!$('#rFrom').value) $('#rFrom').value = S.R.length ? S.R[0].date : addDays(S.today, -30);
+  if (!$('#rTo').value) $('#rTo').value = addDays(S.today, -1);
+  const c = current(), rows = S.R.slice().reverse(), shown = S.ratesAll ? rows : rows.slice(0, 45);
+  const cell = (v, d) => v == null ? '<span class="mut">—</span>' : nf(v, d);
+  $('#rTable').innerHTML = '<thead><tr><th>Дата</th><th class="n">BTC</th><th class="n">ETH</th><th class="n">LTC</th><th class="n">GRAM</th><th class="n">EUR</th><th class="n">AED</th><th class="n">RUB ЦБ</th><th class="n">RUB итог</th><th>Источник</th><th></th></tr></thead><tbody>' +
+    '<tr><td><b>Сейчас</b></td><td class="n">' + cell(c.btc, 0) + '</td><td class="n">' + cell(c.eth, 2) + '</td><td class="n">' + cell(c.ltc, 2) + '</td><td class="n">' + cell(c.gram, 4) + '</td><td class="n">' + cell(c.eur, 4) + '</td><td class="n">' + cell(c.aed, 4) + '</td><td class="n">' + cell(S.live && S.live.rub, 2) + '</td><td class="n">' + cell(c.rub, 2) + '</td><td><span class="tag">живые котировки</span></td><td class="n"><button class="icon" data-redit="' + S.today + '" aria-label="Задать курс рубля на сегодня">✎</button></td></tr>' +
+    shown.map(r => { const w = r.raw; return '<tr><td>' + fd(r.date) + '</td><td class="n">' + cell(w.btc, 0) + '</td><td class="n">' + cell(w.eth, 2) + '</td><td class="n">' + cell(w.ltc, 2) + '</td><td class="n">' + cell(w.gram, 4) + '</td><td class="n">' + cell(w.eur, 4) + '</td><td class="n">' + cell(w.aed, 4) +
+      '</td><td class="n">' + cell(w.usdRubCbr, 2) + '</td><td class="n">' + cell(r.rub, 2) + (w.usdRubManual != null ? ' <span class="tag manual">вручную</span>' : '') + '</td><td>' +
+      (w.fixedAt ? '<span class="tag fixed">' + esc(w.cryptoSource || 'зафиксировано') + '</span>' : '<span class="tag">' + esc(w.cryptoSource || 'не зафиксировано') + '</span>') +
+      '</td><td class="n" style="white-space:nowrap"><button class="icon" data-redit="' + r.date + '" aria-label="Изменить курсы">✎</button><button class="icon" data-refix="' + r.date + '" aria-label="Перефиксировать на 23:59" title="Перефиксировать на 23:59">↻</button></td></tr>'; }).join('') + '</tbody>';
+  $('#rMore').classList.toggle('hidden', S.ratesAll || rows.length <= 45);
+  const L = S.R.map(r => fdShort(r.date));
+  mk('rC1', { type: 'line', data: { labels: L, datasets: [{ label: 'BTC', data: S.R.map(r => r.btc), borderColor: CUR_COLORS.BTC, pointRadius: 0, borderWidth: 2, yAxisID: 'y' }, { label: 'ETH', data: S.R.map(r => r.eth), borderColor: CUR_COLORS.ETH, pointRadius: 0, borderWidth: 2, yAxisID: 'y1' }] },
+    options: base({ scales: dualScales() }) });
+  mk('rC2', { type: 'line', data: { labels: L, datasets: [{ label: 'LTC', data: S.R.map(r => r.ltc), borderColor: CUR_COLORS.LTC, pointRadius: 0, borderWidth: 2, yAxisID: 'y' }, { label: 'GRAM', data: S.R.map(r => r.gram), borderColor: CUR_COLORS.GRAM, pointRadius: 0, borderWidth: 2, yAxisID: 'y1' }] },
+    options: base({ scales: dualScales() }) });
+  mk('rC3', { type: 'line', data: { labels: L, datasets: [{ label: 'ЦБ РФ', data: S.R.map(r => r.raw.usdRubCbr), borderColor: CUR_COLORS.RUB, pointRadius: 0, borderWidth: 2, spanGaps: true }, { label: 'В расчётах (с ручными)', data: S.R.map(r => r.rub), borderColor: cssVar('--warn'), borderDash: [5, 4], pointRadius: 0, borderWidth: 2 }] },
+    options: base() });
+}
+function dualScales() { const c = cssVar('--muted'), g = cssVar('--line'); return { x: { ticks: { color: c, maxTicksLimit: 8 }, grid: { display: false } }, y: { position: 'left', ticks: { color: c }, grid: { color: g } }, y1: { position: 'right', ticks: { color: c }, grid: { display: false } } }; }
+
+async function fillHistory() {
+  let from = $('#rFrom').value, to = $('#rTo').value; const force = $('#rForce').checked;
+  if (!from || !to || from > to) return toast('Проверьте даты', true);
+  if (force && !confirm('Перезаписать курсы криптовалют и ЦБ за ' + fd(from) + ' — ' + fd(to) + ' значениями на 23:59 по Дубаю?')) return;
+  const btn = $('#rFill'); btn.disabled = true; let done = 0, errs = [];
+  try {
+    for (let i = 0; i < 60 && from <= to; i++) {
+      $('#rProgress').textContent = 'Фиксирую с ' + fd(from) + '… готово дат: ' + done;
+      const j = await api('fixRates', { from, to, force, max: 30 });
+      done += (j.fixed || []).length; errs = errs.concat(j.errors || []);
+      if (!j.processed || !j.processed.length) break;
+      from = addDays(j.processed[j.processed.length - 1], 1);
+    }
+    $('#rProgress').textContent = 'Готово: зафиксировано дат ' + done + '.' + (errs.length ? ' Проблемы: ' + errs.slice(0, 5).join('; ') + (errs.length > 5 ? ' и ещё ' + (errs.length - 5) : '') : '');
+    await load(true);
+  } catch (e) { $('#rProgress').textContent = e.message; toast(e.message, true); }
+  finally { btn.disabled = false; }
+}
+async function refixDate(d) {
+  if (!confirm('Перефиксировать курсы на ' + fd(d) + ' 23:59 (Дубай)? Ручной курс рубля сохранится.')) return;
+  syncState('busy', 'Фиксация ' + fd(d) + '…');
+  try { const j = await api('fixRates', { from: d, to: d, force: true }); toast(j.fixed.length ? 'Курсы на ' + fd(d) + ' зафиксированы' : 'Не удалось: ' + (j.errors || []).join('; '), !j.fixed.length); await load(true); }
+  catch (e) { toast(e.message, true); syncState('err', e.message); }
+}
+let rdDate = null;
+function openRateDlg(d) {
+  rdDate = d; const raw = S.rates.find(r => r.date === d) || {};
+  $('#rdTitle').textContent = 'Курсы на ' + fd(d) + (d === S.today ? ' (сегодня)' : '');
+  document.querySelectorAll('#rateDlg input').forEach(i => i.value = raw[i.dataset.k] != null ? raw[i.dataset.k] : '');
+  $('#rateDlg').showModal();
+}
+async function saveRateDlg() {
+  const raw = S.rates.find(r => r.date === rdDate) || {}, patch = {};
+  document.querySelectorAll('#rateDlg input').forEach(i => {
+    const k = i.dataset.k, v = i.value === '' ? null : Number(i.value), old = raw[k] == null ? null : raw[k];
+    if (v !== old) patch[k] = v;
+  });
+  $('#rateDlg').close();
+  if (!Object.keys(patch).length) return;
+  try { await send('saveRate', { date: rdDate, patch: patch, baseUpdatedAt: raw.updatedAt || '' }); toast('Курсы на ' + fd(rdDate) + ' сохранены'); await load(true); } catch (e) {}
+}
+
+/* ── Долги ── */
+function rDebts() {
+  const hs = holdingsAt(S.today).filter(h => h.interest);
+  if (!hs.length) { $('#dList').innerHTML = '<div class="panel mut">Долгов с процентами нет. Их можно добавить во вкладке «Портфель», отметив «Долг с простыми процентами».</div>'; return; }
+  $('#dList').innerHTML = hs.map((h, n) => {
+    const it = h.interest, end = shiftMonth(S.today.slice(0, 7), 12), rows = [];
+    for (let m = it.start.slice(0, 7), prev = null; m <= end; m = shiftMonth(m, 1)) {
+      const d = m + '-' + it.start.slice(8, 10), q = qtyOf(h, d > it.start ? d : it.start), r = rateFor(d), future = d > S.today;
+      rows.push('<tr' + (future ? ' class="mut"' : '') + '><td>' + fd(d) + '</td><td class="n">' + monthsBetween(it.start, d) + '</td><td class="n">' + money(q, h.cur) + '</td><td class="n">' + usd(toUsd(h.cur, q, r)) + '</td><td class="n">' + (prev == null ? '—' : '+' + money(q - prev, h.cur)) + '</td></tr>');
+      prev = q;
+    }
+    const nowQ = qtyOf(h, S.today);
+    return '<div class="panel"><h3>' + esc(h.name) + '</h3><div class="kpis">' + kpi('Долг сейчас', money(nowQ, h.cur), usd(toUsd(h.cur, nowQ, current()))) + kpi('Начало', fd(it.start), money(it.principal, h.cur)) +
+      kpi('Ставка', nf(it.annualRate, 2) + '% годовых', '+' + money(it.principal * it.annualRate / 1200, h.cur) + ' в месяц') + '</div>' +
+      '<div class="tscroll"><table><thead><tr><th>Дата</th><th class="n">Месяцев</th><th class="n">Долг</th><th class="n">В $</th><th class="n">Прирост</th></tr></thead><tbody>' + rows.join('') + '</tbody></table></div>' +
+      '<div class="note">Простые проценты: сумма на начало × (1 + ставка/12 × число полных месяцев). Серым — будущие месяцы; доллары для них по текущему курсу.</div></div>';
+  }).join('');
+}
+
+/* ── Настройки ── */
+function rSettings() {
+  $('#sUrl').value = S.cfg.url || ''; $('#sPin').value = S.cfg.token || '';
+  const opt = (sel, v) => { sel.innerHTML = CURS.map(c => '<option' + (c === v ? ' selected' : '') + '>' + c + '</option>').join(''); };
+  opt($('#sDefCur'), setting('defaultCurrency', 'RUB')); opt($('#sBudgetCur'), setting('budgetCurrency', 'USD'));
+  $('#sBudget').value = setting('monthlyBudget', '') || '';
+  $('#sCats').value = categories().join('\n');
+  $('#sAed').value = setting('aedRate', 3.6725);
+}
+async function saveSetting(key, value) {
+  const s = S.settings[key];
+  const j = await send('saveSettings', { key: key, value: value, baseUpdatedAt: s ? s.updatedAt : '' });
+  S.settings[key] = { value: value, updatedAt: j.updatedAt };
+}
+
+/* импорт / экспорт */
+function exportData() {
+  const data = { app: 'finance-tracker', version: 30, exportedAt: new Date().toISOString(), rates: S.rates,
+    snapshots: Object.fromEntries(Object.entries(S.snaps).map(([d, s]) => [d, s.holdings])), expenses: S.exps,
+    settings: Object.fromEntries(Object.entries(S.settings).map(([k, s]) => [k, s.value])) };
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
+  a.download = 'finance_backup_' + S.today + '.json'; a.click();
+}
+function convertLegacy(d) {
+  const rates = (d.RATES || []).map(r => ({ date: toIso(r.date), btc: r.btc, eth: r.eth, ltc: r.ltc, gram: r.gram, eur: r.eur, aed: r.aed, usdRubManual: r.usdtRub, cryptoSource: 'импорт v28' }));
+  const snapshots = {};
+  Object.keys(d.HOLDINGS_HISTORY || {}).forEach(k => {
+    snapshots[toIso(k)] = d.HOLDINGS_HISTORY[k].map(h => h.auto === 'micle'
+      ? { name: h.name, cur: 'RUB', qty: 0, type: 'debt', interest: { start: '2026-04-01', principal: 5700000, annualRate: 24 } }
+      : { name: h.name, cur: h.cur, qty: h.qty, type: h.type });
+  });
+  return { rates, snapshots };
+}
+async function importFile(ev) {
+  const file = ev.target.files[0]; ev.target.value = ''; if (!file) return;
+  try {
+    const d = JSON.parse(await file.text());
+    let payload;
+    if (d.RATES) payload = convertLegacy(d);
+    else if (d.app === 'finance-tracker') payload = { rates: d.rates, snapshots: d.snapshots, expenses: d.expenses, settings: d.settings };
+    else throw new Error('Не похоже на файл трекера');
+    payload.overwrite = $('#sOverwrite').checked;
+    const j = await send('importData', payload);
+    const n = j.imported;
+    toast('Загружено: курсов ' + n.rates + ', записей портфеля ' + n.snapshots + ', расходов ' + n.expenses);
+    await load(true);
+    if (d.RATES) { S.ui.tab = 'rates'; saveJSON(LS.ui, S.ui); renderTab(); $('#rProgress').textContent = 'Курсы из прежней версии помечены «импорт v28». Нажмите «Заполнить пропуски», чтобы заменить их точными курсами на 23:59 и заполнить дни между датами. Ваш курс USDT/RUB сохранён как ручной.'; }
+  } catch (e) { if (!e.conflict) toast('Не удалось загрузить: ' + e.message, true); }
+}
+
+/* ═════════════ События ═════════════ */
+function bind() {
+  $('#tabs').addEventListener('click', e => { const t = e.target.closest('.tab'); if (!t) return; S.ui.tab = t.dataset.tab; saveJSON(LS.ui, S.ui); renderTab(); });
+  $('#syncBtn').addEventListener('click', () => load());
+  $('#ovRange').addEventListener('change', rOverview);
+  $('#ovAddExp').addEventListener('click', () => { S.ui.tab = 'expenses'; saveJSON(LS.ui, S.ui); renderTab(); $('#eAmount').focus(); });
+
+  $('#eSave').addEventListener('click', saveExpense);
+  $('#eAmount').addEventListener('keydown', e => { if (e.key === 'Enter') saveExpense(); });
+  $('#eCancel').addEventListener('click', () => { resetExpForm(); rExpenses(); });
+  $('#eDate').addEventListener('change', rExpenses);
+  $('#expMonth').addEventListener('change', e => { if (e.target.value) { S.expMonth = e.target.value; rExpenses(); } });
+  $('#expPrev').addEventListener('click', () => { S.expMonth = shiftMonth(S.expMonth, -1); rExpenses(); });
+  $('#expNext').addEventListener('click', () => { S.expMonth = shiftMonth(S.expMonth, 1); rExpenses(); });
+  $('#expDisp').addEventListener('change', e => { S.ui.disp = e.target.value; saveJSON(LS.ui, S.ui); rExpenses(); });
+  $('#expList').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; if (b.dataset.edit) editExpense(b.dataset.edit); if (b.dataset.del) deleteExpense(b.dataset.del); });
+
+  $('#pDate').addEventListener('change', rPortfolio);
+  const pClick = e => {
+    const b = e.target.closest('[data-rm]'); if (!b) return;
+    const date = pDate(), hs = cloneH(holdingsAt(date)), h = hs[+b.dataset.rm];
+    if (!confirm('Убрать «' + h.name + '» из портфеля начиная с ' + fd(date) + '?')) return;
+    hs.splice(+b.dataset.rm, 1); saveHoldings(date, hs, '«' + h.name + '» убрано');
+  };
+  const pChange = e => {
+    const inp = e.target.closest('[data-qty]'); if (!inp) return;
+    const v = Number(inp.value); if (!isFinite(v) || v < 0) { toast('Количество должно быть числом не меньше нуля', true); return rPortfolio(); }
+    const date = pDate(), hs = cloneH(holdingsAt(date)); hs[+inp.dataset.qty].qty = v;
+    saveHoldings(date, hs, 'Количество сохранено на ' + fd(date));
+  };
+  ['#pAssets', '#pDebts'].forEach(s => { $(s).addEventListener('click', pClick); $(s).addEventListener('change', pChange); });
+  $('#pSnapActions').addEventListener('click', async e => {
+    if (e.target.id !== 'pDelSnap') return; const date = pDate();
+    if (!confirm('Удалить запись портфеля от ' + fd(date) + '? С этой даты будет действовать предыдущая запись.')) return;
+    const prev = S.snaps[date]; delete S.snaps[date]; renderAll();
+    try { await send('deleteSnapshot', { date: date, baseUpdatedAt: prev.updatedAt }); toast('Запись удалена'); } catch (er) { if (!er.conflict) { S.snaps[date] = prev; renderAll(); } }
+  });
+  $('#hInt').addEventListener('change', e => $('#hIntBox').classList.toggle('hidden', !e.target.checked));
+  $('#hAdd').addEventListener('click', () => {
+    const name = $('#hName').value.trim(); if (!name) return toast('Введите название', true);
+    const h = { name: name, cur: $('#hCur').value, qty: Number($('#hQty').value) || 0, type: $('#hType').value };
+    if ($('#hInt').checked) {
+      const p = Number($('#hIntP').value), r = Number($('#hIntR').value);
+      if (!p || !$('#hIntStart').value) return toast('Для долга с процентами укажите дату начала и сумму', true);
+      h.type = 'debt'; h.interest = { start: $('#hIntStart').value, principal: p, annualRate: r || 0 };
+    } else if (!h.qty) return toast('Введите количество', true);
+    const date = pDate(); const hs = cloneH(holdingsAt(date)); hs.push(h);
+    saveHoldings(date, hs, '«' + name + '» добавлено с ' + fd(date));
+    $('#hName').value = ''; $('#hQty').value = ''; $('#hInt').checked = false; $('#hIntBox').classList.add('hidden');
+  });
+
+  ['#cFrom', '#cTo'].forEach(s => $(s).addEventListener('change', rCompare));
+  ['#fH', '#fBase'].forEach(s => $(s).addEventListener('change', rForecast));
+
+  $('#rFill').addEventListener('click', fillHistory);
+  $('#rMore').addEventListener('click', () => { S.ratesAll = true; rRates(); });
+  $('#rTable').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; if (b.dataset.redit) openRateDlg(b.dataset.redit); if (b.dataset.refix) refixDate(b.dataset.refix); });
+  $('#rdCancel').addEventListener('click', () => $('#rateDlg').close());
+  $('#rdSave').addEventListener('click', saveRateDlg);
+
+  $('#sConn').addEventListener('click', () => connect($('#sUrl').value, $('#sPin').value));
+  $('#cGo').addEventListener('click', () => connect($('#cUrl').value, $('#cPin').value));
+  $('#cPin').addEventListener('keydown', e => { if (e.key === 'Enter') connect($('#cUrl').value, $('#cPin').value); });
+  $('#sSaveExp').addEventListener('click', async () => {
+    const cats = $('#sCats').value.split('\n').map(s => s.trim()).filter(Boolean);
+    try {
+      await saveSetting('categories', cats.length ? [...new Set(cats)] : DEFAULT_CATS);
+      await saveSetting('defaultCurrency', $('#sDefCur').value);
+      await saveSetting('monthlyBudget', Number($('#sBudget').value) || 0);
+      await saveSetting('budgetCurrency', $('#sBudgetCur').value);
+      toast('Настройки расходов сохранены');
+    } catch (e) {}
+  });
+  $('#sSaveAed').addEventListener('click', async () => { const v = Number($('#sAed').value); if (!v) return toast('Введите курс', true); try { await saveSetting('aedRate', v); buildRates(); toast('Курс AED сохранён'); } catch (e) {} });
+  $('#sExport').addEventListener('click', exportData);
+  $('#sImportBtn').addEventListener('click', () => $('#sImport').click());
+  $('#sImport').addEventListener('change', importFile);
+
+  window.addEventListener('online', () => load(true));
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) { ping(); fetchLive(); } });
+}
+
+async function ping() {
+  if (!S.cfg.url || document.hidden) return;
+  if (todayDubai() !== S.today) S.today = todayDubai();
+  try { const j = await api('ping', {}); if (j.version !== S.version || S.pending.length) load(true); else syncState('ok', 'Синхронизировано ' + timeNow()); }
+  catch (e) { syncState('err', e.message); }
+}
+
+async function connect(url, pin) {
+  url = (url || '').trim(); pin = (pin || '').trim();
+  if (!/^https:\/\/script\.google(usercontent)?\.com\//.test(url)) return toast('Нужен адрес вида https://script.google.com/macros/s/…/exec', true);
+  const old = S.cfg; S.cfg = { url: url, token: pin };
+  try { await api('ping', {}); saveJSON(LS.cfg, S.cfg); toast('Подключено'); start(); }
+  catch (e) { S.cfg = old; toast(e.message, true); }
+}
+
+function start() {
+  $('#connect').classList.add('hidden'); $('#app').classList.remove('hidden');
+  const cache = loadJSON(LS.cache, null);
+  if (cache) apply(cache); else renderAll();
+  load(true); fetchLive();
+}
+
+/* ═════════════ Запуск ═════════════ */
+if (window.Chart) { Chart.defaults.font.family = "'Onest', system-ui, sans-serif"; Chart.defaults.font.size = 12; }
+bind();
+if (S.cfg.url && S.cfg.token) start();
+else { $('#connect').classList.remove('hidden'); syncState('', 'Нет подключения'); }
+setInterval(ping, 30000);
+setInterval(() => { if (!document.hidden && S.cfg.url) fetchLive(); }, 60000);
+</script>
+</body>
+</html>
