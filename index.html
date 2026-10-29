@@ -550,8 +550,10 @@ function rateShown(cur, r) {
 }
 
 /* живые котировки */
+let gramFetchedAt = 0;
 async function fetchLive() {
   const sym = Object.assign({}, DEFAULT_SYMBOLS, setting('binanceSymbols', {}));
+  delete sym.gram;
   const list = Object.values(sym);
   const live = Object.assign({}, S.live || {});
   let got = false;
@@ -562,6 +564,14 @@ async function fetchLive() {
       const arr = await r.json();
       Object.keys(sym).forEach(k => { const x = arr.find(a => a.symbol === sym[k]); if (x) live[k] = Number(x.price); });
       got = true; break;
+    } catch (e) {}
+  }
+  if (Date.now() - gramFetchedAt >= 60000) {
+    try {
+      const r = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=the-open-network&vs_currencies=usd');
+      const d = await r.json();
+      const p = d['the-open-network'] && d['the-open-network'].usd;
+      if (p > 0) { live.gram = p; gramFetchedAt = Date.now(); got = true; }
     } catch (e) {}
   }
   if (!got) {
